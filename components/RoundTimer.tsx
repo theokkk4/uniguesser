@@ -31,7 +31,7 @@ export default function RoundTimer({ duration, running, onTimeUp }: RoundTimerPr
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [running, remaining]);
+  }, [running]);
 
   const warning = remaining <= 15;
   const critical = remaining <= 10;

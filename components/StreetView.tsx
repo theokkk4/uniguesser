@@ -20,26 +20,35 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
 
     readyFired.current = false;
 
-    const panorama = new window.google.maps.StreetViewPanorama(
-      containerRef.current,
-      {
-        position: { lat, lng },
-        pov: { heading: 0, pitch: 0 },
-        zoom: 1,
-        addressControl: false,
-        showRoadLabels: false,
-        motionTracking: false,
-        motionTrackingControl: false,
-        fullscreenControl: false,
-        clickToGo: true,
-        enableCloseButton: false,
-        linksControl: true,
-        panControl: true,
-        zoomControl: true,
-      }
-    );
+    let panorama: google.maps.StreetViewPanorama;
+    try {
+      panorama = new window.google.maps.StreetViewPanorama(
+        containerRef.current,
+        {
+          position: { lat, lng },
+          pov: { heading: 0, pitch: 0 },
+          zoom: 1,
+          addressControl: false,
+          showRoadLabels: false,
+          motionTracking: false,
+          motionTrackingControl: false,
+          fullscreenControl: false,
+          clickToGo: true,
+          enableCloseButton: false,
+          linksControl: true,
+          panControl: true,
+          zoomControl: true,
+        }
+      );
+    } catch {
+      queueMicrotask(() => {
+        setLoading(false);
+        setError(true);
+      });
+      return;
+    }
 
-    panorama.addListener('status_changed', () => {
+    const statusUnsub = panorama.addListener('status_changed', () => {
       const status = panorama.getStatus();
       if (status === 'OK') {
         setLoading(false);
@@ -57,13 +66,14 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
       }
     });
 
-    panorama.addListener('pano_changed', () => {
+    const panoUnsub = panorama.addListener('pano_changed', () => {
       setLoading(false);
       setError(false);
     });
 
     return () => {
-      window.google.maps.event.clearInstanceListeners(panorama);
+      google.maps.event.removeListener(statusUnsub);
+      google.maps.event.removeListener(panoUnsub);
     };
   }, [lat, lng, isLoaded, onReady]);
 

@@ -17,7 +17,7 @@ const libraries: ('places' | 'geometry')[] = [];
 const TIMER_DURATION = 90;
 
 export default function GamePage() {
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
@@ -161,6 +161,35 @@ export default function GamePage() {
 
   const timerKey = `${currentRound}-${currentLocation?.lat}-${currentLocation?.lng}`;
   const showTimer = streetViewReady && !showModal && !countdownActive && !finished;
+
+  if (loadError) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-black p-4 safe-top safe-bottom">
+        <div className="bg-zinc-900/95 border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl text-center space-y-4">
+          <div className="text-3xl text-zinc-600">⚠</div>
+          <h2 className="text-white font-bold text-lg">Failed to load</h2>
+          <p className="text-zinc-400 text-sm leading-relaxed">
+            Google Maps couldn&apos;t load. Check your API key configuration and ensure the
+            Maps JavaScript API and Street View API are enabled.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-white text-black font-semibold py-3 px-6 rounded-xl hover:bg-zinc-200 active:scale-[0.97] transition-all duration-200 text-sm"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="w-full border border-white/10 text-zinc-300 font-medium py-3 px-6 rounded-xl hover:bg-zinc-800 active:scale-[0.97] transition-all duration-200 text-sm"
+            >
+              Return Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoaded) {
     return (
