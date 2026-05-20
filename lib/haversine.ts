@@ -21,7 +21,7 @@ export function haversineDistance(
 }
 
 export function calculateScore(distanceMeters: number): number {
-  if (distanceMeters < 10000) return 5000;
+  if (distanceMeters < 3000) return 5000;
   return Math.max(0, Math.round(5000 / (1 + distanceMeters / 200)));
 }
 
