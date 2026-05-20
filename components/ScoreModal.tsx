@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 
+interface BonusInfo {
+  stateMatch: boolean;
+  cityRadius: boolean;
+  stateBonus: number;
+  cityBonus: number;
+}
+
 interface ScoreModalProps {
   visible: boolean;
   roundScore: number;
@@ -13,6 +20,8 @@ interface ScoreModalProps {
   school: string;
   difficulty: string;
   locationName: string;
+  bonus: BonusInfo | null;
+  bonusPoints: number;
 }
 
 const difficultyLabel: Record<string, string> = {
@@ -93,6 +102,8 @@ export default function ScoreModal({
   school,
   difficulty,
   locationName,
+  bonus,
+  bonusPoints,
 }: ScoreModalProps) {
   if (!visible) return null;
 
@@ -137,6 +148,22 @@ export default function ScoreModal({
                   : `${(distance / 1000).toFixed(2)}km`}
               </span>
             </div>
+            {bonus && bonusPoints > 0 && (
+              <div className="space-y-1.5 border-b border-white/5 pb-2.5">
+                {bonus.stateMatch && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-green-400">+ State Bonus</span>
+                    <span className="font-mono text-green-400">+{bonus.stateBonus}</span>
+                  </div>
+                )}
+                {bonus.cityRadius && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-sky-400">+ City Radius Bonus</span>
+                    <span className="font-mono text-sky-400">+{bonus.cityBonus}</span>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex justify-between items-center text-sm">
               <span className="text-zinc-400">Round Score</span>
               <span className="font-mono text-white">{roundScore}</span>

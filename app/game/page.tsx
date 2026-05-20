@@ -10,8 +10,10 @@ import RoundCountdown from '@/components/RoundCountdown';
 import RoundTimer from '@/components/RoundTimer';
 import { getRandomLocations } from '@/data/locations';
 import { validatePanorama } from '@/lib/validateLocation';
-import { haversineDistance, calculateScore } from '@/lib/haversine';
+import { haversineDistance, calculateScore, calculateBonuses } from '@/lib/haversine';
+import { reverseGeocode } from '@/lib/geocode';
 import type { Location } from '@/data/locations';
+import type { BonusInfo } from '@/lib/haversine';
 
 const libraries: ('places' | 'geometry')[] = [];
 const TIMER_DURATION = 90;
@@ -37,6 +39,8 @@ export default function GamePage() {
   const [finished, setFinished] = useState(false);
   const [streetViewReady, setStreetViewReady] = useState(false);
   const [countdownActive, setCountdownActive] = useState(false);
+  const [currentBonus, setCurrentBonus] = useState<BonusInfo | null>(null);
+  const [bonusPoints, setBonusPoints] = useState(0);
 
   const router = useRouter();
   const cancelledRef = useRef(false);
@@ -97,18 +101,36 @@ export default function GamePage() {
   }, []);
 
   const processSubmit = useCallback(
-    (guessedPos: { lat: number; lng: number } | null) => {
+    async (guessedPos: { lat: number; lng: number } | null) => {
       const loc = currentLocationRef.current;
       if (!loc || !guessedPos) return;
 
       const distance = haversineDistance(loc.lat, loc.lng, guessedPos.lat, guessedPos.lng);
-      const score = calculateScore(distance);
+      const baseScore = calculateScore(distance);
       setCurrentDistance(distance);
-      setCurrentScore(score);
-      setTotalScore(prev => prev + score);
+
+      let bonus: BonusInfo = { stateMatch: false, cityRadius: false, stateBonus: 0, cityBonus: 0 };
+      let totalBonus = 0;
+      const result = await reverseGeocode(guessedPos.lat, guessedPos.lng);
+      if (result.state) {
+        const stateMatch = result.state === loc.state;
+        const cityBonuses = calculateBonuses(guessedPos.lat, guessedPos.lng, loc.state, loc.cityLat, loc.cityLng);
+        bonus = {
+          stateMatch,
+          cityRadius: cityBonuses.cityRadius,
+          stateBonus: stateMatch ? 1000 : 0,
+          cityBonus: cityBonuses.cityBonus,
+        };
+        totalBonus = bonus.stateBonus + bonus.cityBonus;
+      }
+      const totalRoundScore = baseScore + totalBonus;
+      setCurrentScore(totalRoundScore);
+      setBonusPoints(totalBonus);
+      setCurrentBonus(bonus);
+      setTotalScore(prev => prev + totalRoundScore);
       setRoundResults(prev => [
         ...prev,
-        { distance, score, school: loc.school, locationName: loc.name, difficulty: loc.difficulty },
+        { distance, score: totalRoundScore, school: loc.school, locationName: loc.name, difficulty: loc.difficulty },
       ]);
       setShowModal(true);
     },
@@ -349,6 +371,8 @@ export default function GamePage() {
         school={currentLocation.school}
         difficulty={currentLocation.difficulty}
         locationName={currentLocation.name}
+        bonus={currentBonus}
+        bonusPoints={bonusPoints}
       />
     </div>
   );

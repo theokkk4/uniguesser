@@ -23,3 +23,30 @@ export function haversineDistance(
 export function calculateScore(distanceMeters: number): number {
   return Math.max(0, Math.round(5000 / (1 + distanceMeters / 200)));
 }
+
+const CITY_RADIUS = 20000;
+const CITY_BONUS = 2000;
+
+export interface BonusInfo {
+  stateMatch: boolean;
+  cityRadius: boolean;
+  stateBonus: number;
+  cityBonus: number;
+}
+
+export function calculateBonuses(
+  guessLat: number,
+  guessLng: number,
+  targetState: string,
+  cityLat: number,
+  cityLng: number
+): BonusInfo {
+  const distToCity = haversineDistance(guessLat, guessLng, cityLat, cityLng);
+  const cityRadius = distToCity <= CITY_RADIUS;
+  return {
+    stateMatch: false,
+    cityRadius,
+    stateBonus: 0,
+    cityBonus: cityRadius ? CITY_BONUS : 0,
+  };
+}
