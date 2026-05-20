@@ -104,9 +104,12 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 pb-6 text-center">
+      <div className="relative z-10 pb-6 text-center space-y-1">
         <p className="text-zinc-800 text-[10px] font-mono tracking-wider">
           UniGuesser · v0.1.0
+        </p>
+        <p className="text-zinc-700 text-[9px] font-mono tracking-wider">
+          by Theodore King
         </p>
       </div>
 

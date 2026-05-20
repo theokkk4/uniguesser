@@ -12,6 +12,8 @@ interface MiniMapProps {
   onSubmit: () => void;
   canSubmit: boolean;
   streetViewReady: boolean;
+  mapCenter?: { lat: number; lng: number };
+  mapZoom?: number;
 }
 
 const MAP_CENTER = { lat: 39.8283, lng: -98.5795 };
@@ -92,6 +94,8 @@ export default function MiniMap({
   onSubmit,
   canSubmit,
   streetViewReady,
+  mapCenter,
+  mapZoom,
 }: MiniMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -101,6 +105,12 @@ export default function MiniMap({
   useEffect(() => {
     showResultRef.current = showResult;
   }, [showResult]);
+
+  useEffect(() => {
+    if (!mapRef.current || !mapCenter) return;
+    mapRef.current.setCenter(mapCenter);
+    mapRef.current.setZoom(mapZoom ?? 12);
+  }, [mapCenter, mapZoom]);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -177,8 +187,8 @@ export default function MiniMap({
         <div className="h-32 sm:h-36 md:h-40 lg:h-48">
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
-            center={MAP_CENTER}
-            zoom={4}
+            center={mapCenter ?? MAP_CENTER}
+            zoom={mapZoom ?? (mapCenter ? 12 : 4)}
             onClick={handleClick}
             onLoad={onMapLoad}
             options={mapOptions}

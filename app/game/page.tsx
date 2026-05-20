@@ -8,7 +8,7 @@ import MiniMap from '@/components/MiniMap';
 import ScoreModal from '@/components/ScoreModal';
 import RoundCountdown from '@/components/RoundCountdown';
 import RoundTimer from '@/components/RoundTimer';
-import { getRandomLocations } from '@/data/locations';
+import { getRandomLocations, getSchoolCenters, getSchools } from '@/data/locations';
 import { validatePanorama } from '@/lib/validateLocation';
 import { haversineDistance, calculateScore, calculateBonuses } from '@/lib/haversine';
 import { reverseGeocode } from '@/lib/geocode';
@@ -41,12 +41,27 @@ export default function GamePage() {
   const [countdownActive, setCountdownActive] = useState(false);
   const [currentBonus, setCurrentBonus] = useState<BonusInfo | null>(null);
   const [bonusPoints, setBonusPoints] = useState(0);
+  const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const schoolCenters = getSchoolCenters();
+  const schools = getSchools();
 
   const router = useRouter();
   const cancelledRef = useRef(false);
   const guessPositionRef = useRef<{ lat: number; lng: number } | null>(null);
   const streetViewReadyRef = useRef(false);
   const currentLocationRef = useRef<Location | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!isLoaded || !window.google) return;
@@ -348,6 +363,52 @@ export default function GamePage() {
         <RoundCountdown onComplete={handleCountdownComplete} />
       )}
 
+      {/* College dropdown */}
+      <div ref={dropdownRef} className="absolute bottom-3 left-3 z-20">
+        <div className="backdrop-blur-xl bg-black/70 border border-white/10 rounded-2xl overflow-hidden shadow-2xl w-44 sm:w-52">
+          <button
+            onClick={() => setDropdownOpen(o => !o)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-mono text-white/70 hover:text-white transition-colors"
+          >
+            <span className="truncate">{selectedCollege || 'All Colleges'}</span>
+            <svg
+              className={`w-3 h-3 shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          {dropdownOpen && (
+            <div className="border-t border-white/5 max-h-40 overflow-y-auto">
+              <button
+                onClick={() => { setSelectedCollege(null); setDropdownOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-[11px] font-mono transition-colors ${
+                  !selectedCollege ? 'text-white bg-white/5' : 'text-zinc-500 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                All Colleges
+              </button>
+              {schools.map(school => (
+                <button
+                  key={school}
+                  onClick={() => { setSelectedCollege(school); setDropdownOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-mono transition-colors ${
+                    selectedCollege === school ? 'text-white bg-white/5' : 'text-zinc-500 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {school}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <MiniMap
         isLoaded={isLoaded}
         onGuess={handleGuess}
@@ -357,6 +418,8 @@ export default function GamePage() {
         onSubmit={handleSubmit}
         canSubmit={!!guessPosition && streetViewReady && !showModal}
         streetViewReady={streetViewReady}
+        mapCenter={selectedCollege ? schoolCenters[selectedCollege] : undefined}
+        mapZoom={selectedCollege ? 13 : undefined}
       />
 
       <ScoreModal

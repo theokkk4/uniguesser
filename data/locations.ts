@@ -190,3 +190,23 @@ export function getSchools(): string[] {
   const schoolSet = new Set(locations.map(l => l.school));
   return Array.from(schoolSet);
 }
+
+export function getSchoolCenters(): Record<string, { lat: number; lng: number }> {
+  const groups: Record<string, { latSum: number; lngSum: number; count: number }> = {};
+  for (const loc of locations) {
+    if (!groups[loc.school]) {
+      groups[loc.school] = { latSum: 0, lngSum: 0, count: 0 };
+    }
+    groups[loc.school].latSum += loc.lat;
+    groups[loc.school].lngSum += loc.lng;
+    groups[loc.school].count++;
+  }
+  const centers: Record<string, { lat: number; lng: number }> = {};
+  for (const [school, vals] of Object.entries(groups)) {
+    centers[school] = {
+      lat: vals.latSum / vals.count,
+      lng: vals.lngSum / vals.count,
+    };
+  }
+  return centers;
+}
