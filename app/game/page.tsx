@@ -9,11 +9,17 @@ import ScoreModal from '@/components/ScoreModal';
 import RoundCountdown from '@/components/RoundCountdown';
 import RoundTimer from '@/components/RoundTimer';
 import { getRandomLocations, getSchoolCenters, getSchools } from '@/data/locations';
-import { validatePanorama } from '@/lib/validateLocation';
+import { validatePanorama, type ValidationResult } from '@/lib/validateLocation';
 import { haversineDistance, calculateScore, calculateBonuses } from '@/lib/haversine';
 import { reverseGeocode } from '@/lib/geocode';
 import type { Location } from '@/data/locations';
 import type { BonusInfo } from '@/lib/haversine';
+
+interface ValidatedLocation {
+  location: Location;
+  panoLat: number;
+  panoLng: number;
+}
 
 const libraries: ('places' | 'geometry')[] = [];
 const TIMER_DURATION = 90;
@@ -25,7 +31,7 @@ export default function GamePage() {
     libraries,
   });
 
-  const [validatedLocations, setValidatedLocations] = useState<Location[] | null>(null);
+  const [validatedLocations, setValidatedLocations] = useState<ValidatedLocation[] | null>(null);
   const [validating, setValidating] = useState(true);
   const [currentRound, setCurrentRound] = useState(0);
   const [guessPosition, setGuessPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -70,16 +76,19 @@ export default function GamePage() {
 
     async function doValidation() {
       const svc = new window.google.maps.StreetViewService();
-      const valid: Location[] = [];
+      const valid: ValidatedLocation[] = [];
       let attempts = 0;
 
       while (valid.length < 5 && attempts < 15 && !cancelledRef.current) {
         const candidates = getRandomLocations(20);
         for (const loc of candidates) {
           if (valid.length >= 5 || cancelledRef.current) break;
-          const ok = await validatePanorama(svc, loc.lat, loc.lng);
-          if (ok && !valid.find(v => v.lat === loc.lat && v.lng === loc.lng)) {
-            valid.push(loc);
+          const result = await validatePanorama(svc, loc.lat, loc.lng);
+          if (result.valid && result.panoLat != null && result.panoLng != null) {
+            const dup = valid.find(v => v.location.lat === loc.lat && v.location.lng === loc.lng);
+            if (!dup) {
+              valid.push({ location: loc, panoLat: result.panoLat, panoLng: result.panoLng });
+            }
           }
         }
         attempts++;
@@ -97,7 +106,8 @@ export default function GamePage() {
     };
   }, [isLoaded]);
 
-  const currentLocation: Location | null = validatedLocations?.[currentRound] ?? null;
+  const currentValidated = validatedLocations?.[currentRound] ?? null;
+  const currentLocation: Location | null = currentValidated?.location ?? null;
   const isLastRound = currentRound === 4;
 
   useEffect(() => {
@@ -325,9 +335,9 @@ export default function GamePage() {
   return (
     <div className="h-full w-full relative bg-black overflow-hidden safe-top safe-bottom">
       <StreetView
-        key={`${currentLocation.lat}-${currentLocation.lng}`}
-        lat={currentLocation.lat}
-        lng={currentLocation.lng}
+        key={`${currentValidated!.panoLat}-${currentValidated!.panoLng}`}
+        lat={currentValidated!.panoLat}
+        lng={currentValidated!.panoLng}
         isLoaded={isLoaded}
         onReady={handleStreetViewReady}
       />

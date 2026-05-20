@@ -9,6 +9,8 @@ interface StreetViewProps {
   onReady?: () => void;
 }
 
+const LOADING_TIMEOUT = 12000;
+
 export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
@@ -19,6 +21,15 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
     if (!containerRef.current || !isLoaded || !window.google) return;
 
     readyFired.current = false;
+    setLoading(true);
+    setError(false);
+
+    const loadingTimeout = setTimeout(() => {
+      if (!readyFired.current) {
+        setLoading(false);
+        setError(true);
+      }
+    }, LOADING_TIMEOUT);
 
     let panorama: google.maps.StreetViewPanorama;
     try {
@@ -41,6 +52,7 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
         }
       );
     } catch {
+      clearTimeout(loadingTimeout);
       queueMicrotask(() => {
         setLoading(false);
         setError(true);
@@ -51,6 +63,7 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
     const statusUnsub = panorama.addListener('status_changed', () => {
       const status = panorama.getStatus();
       if (status === 'OK') {
+        clearTimeout(loadingTimeout);
         setLoading(false);
         setError(false);
         if (!readyFired.current) {
@@ -61,17 +74,20 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
         status === google.maps.StreetViewStatus.ZERO_RESULTS ||
         status === google.maps.StreetViewStatus.UNKNOWN_ERROR
       ) {
+        clearTimeout(loadingTimeout);
         setLoading(false);
         setError(true);
       }
     });
 
     const panoUnsub = panorama.addListener('pano_changed', () => {
+      clearTimeout(loadingTimeout);
       setLoading(false);
       setError(false);
     });
 
     return () => {
+      clearTimeout(loadingTimeout);
       google.maps.event.removeListener(statusUnsub);
       google.maps.event.removeListener(panoUnsub);
     };
@@ -93,7 +109,7 @@ export default function StreetView({ lat, lng, isLoaded, onReady }: StreetViewPr
           <div className="flex flex-col items-center gap-3">
             <span className="text-white/30 text-2xl">⊙</span>
             <p className="text-white/50 text-sm font-mono">
-              No Street View available here
+              Street View unavailable — timer will auto-submit
             </p>
           </div>
         </div>

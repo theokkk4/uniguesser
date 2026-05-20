@@ -10,11 +10,17 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 }
 
+export interface ValidationResult {
+  valid: boolean;
+  panoLat?: number;
+  panoLng?: number;
+}
+
 export function validatePanorama(
   svc: google.maps.StreetViewService,
   lat: number,
   lng: number
-): Promise<boolean> {
+): Promise<ValidationResult> {
   return new Promise((resolve) => {
     try {
       svc.getPanorama(
@@ -35,18 +41,20 @@ export function validatePanorama(
             if (panoLat != null && panoLng != null) {
               const dist = haversineDistance(lat, lng, panoLat, panoLng);
               if (dist > 60) {
-                resolve(false);
+                resolve({ valid: false });
                 return;
               }
+              resolve({ valid: true, panoLat, panoLng });
+            } else {
+              resolve({ valid: false });
             }
-            resolve(true);
           } else {
-            resolve(false);
+            resolve({ valid: false });
           }
         }
       );
     } catch {
-      resolve(false);
+      resolve({ valid: false });
     }
   });
 }
